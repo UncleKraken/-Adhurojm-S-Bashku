@@ -1106,17 +1106,22 @@ function parseLyricsText(raw){
   const lines = raw.split('\n');
   const sections = [];
   let cur = null;
-  const SEC_RE = /^\[?(V1|V2|V3|CH|BR|PR|INST|Strofa|Refreni|Ura|ParaRefreni)\]?:?\s*(.*)$/i;
-  const SEC_COLORS = {CH:'var(--red)',BR:'#5a4a8a',PR:'#2a6a3a',INST:'var(--text3)'};
-  const LABEL_MAP = {Strofa:'V1',Refreni:'CH',Ura:'BR',ParaRefreni:'PR'};
+  const SEC_RE = /^\[?(V\d*|CH\d*|BR\d*|PR\d*|INST\d*|Strofa\s*\d*|Refreni\s*(?:Fund)?\s*\d*|Ura\s*\d*|ParaRefreni\s*\d*)\]?:?\s*(.*)$/i;
+  const SEC_COLORS = {'CH':'var(--red)','CH2':'var(--red)','CH3':'var(--red)','BR':'#5a4a8a','BR2':'#5a4a8a','BR3':'#5a4a8a','PR':'#2a6a3a','PR2':'#2a6a3a','INST':'var(--text3)'};
+  const LABEL_MAP = {'Strofa':'V1','Strofa1':'V1','Strofa2':'V2','Strofa3':'V3','Refreni':'CH','RefreniFund':'CH','Ura':'BR','Ura1':'BR','Ura2':'BR2','ParaRefreni':'PR'};
 
   for(let raw_line of lines){
     const line = raw_line.trimEnd();
     const sm = line.match(SEC_RE);
     if(sm){
-      const rawLabel = sm[1];
-      const label = LABEL_MAP[rawLabel] || rawLabel.toUpperCase();
-      cur = {label, color: SEC_COLORS[label]||'var(--blue)', lines:[]};
+      const rawLabel = sm[1].trim().replace(/\s+/g,'');
+      // Normalize Albanian labels to standard codes
+      const normalized = LABEL_MAP[rawLabel] || LABEL_MAP[rawLabel.charAt(0).toUpperCase()+rawLabel.slice(1).toLowerCase()] || rawLabel.toUpperCase().replace(/\s/g,'');
+      const label = normalized;
+      // Get color — check exact match first, then base label (e.g. CH for CH2)
+      const baseLabel = label.replace(/\d+$/, '');
+      const color = SEC_COLORS[label] || SEC_COLORS[baseLabel] || 'var(--blue)';
+      cur = {label, color, lines:[]};
       sections.push(cur);
       // If there's content after the label on same line
       const rest = sm[2].trim();
