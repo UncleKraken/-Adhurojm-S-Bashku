@@ -815,9 +815,22 @@ footer{background:#07090F;color:rgba(255,255,255,0.55);padding:44px 24px 26px}
           <div class="form-group">
             <label class="form-label">Instrumentet</label>
             <div style="display:flex;gap:16px;margin-top:8px">
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="fGuitar" checked/> 🎸 Guitar</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="fGuitar" checked onchange="toggleCapoField()"/> 🎸 Guitar</label>
               <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="fPiano"/> 🎹 Piano</label>
             </div>
+          </div>
+          <div class="form-group" id="capoField">
+            <label class="form-label">🎸 Capo (Guitar)</label>
+            <select class="form-select" id="fCapo">
+              <option value="0">Pa Capo</option>
+              <option value="1">Capo 1</option>
+              <option value="2">Capo 2</option>
+              <option value="3">Capo 3</option>
+              <option value="4">Capo 4</option>
+              <option value="5">Capo 5</option>
+              <option value="6">Capo 6</option>
+              <option value="7">Capo 7</option>
+            </select>
           </div>
           <div class="form-group">
             <label class="form-label">Shfaq si "Popular"?</label>
@@ -1025,6 +1038,12 @@ const FLAT_MAP  = {Db:'C#',Eb:'D#',Fb:'E',Gb:'F#',Ab:'G#',Bb:'A#',Cb:'B'};
 const SHARP_DISPLAY = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
 
 // ── YouTube URL → embed format ──
+function toggleCapoField() {
+  const guitarChecked = document.getElementById('fGuitar').checked;
+  const capoField = document.getElementById('capoField');
+  if (capoField) capoField.style.display = guitarChecked ? 'block' : 'none';
+}
+
 function toEmbedUrl(url) {
   if (!url) return '';
   // Already an embed URL
@@ -1235,6 +1254,7 @@ async function loadSongsAsync() {
     popular: !!row.popular,
     recent: !!row.recent,
     bilingual: row.bilingual !== false,
+    capo: row.capo || 0,
     youtube: row.youtube || null,
     thumb: row.thumb_url || null,
     thumbGrad: ['#1a2a4a','#2c4074','#5a80c0'],
@@ -1255,6 +1275,7 @@ async function upsertSongAsync(song) {
     popular: !!song.popular,
     recent: !!song.recent,
     bilingual: song.bilingual !== false,
+    capo: song.capo || 0,
     youtube: song.youtube || null,
     thumb_url: song.thumb || null,
     lyrics_guitar: song.lyricsRaw?.Guitar || null,
@@ -1262,9 +1283,10 @@ async function upsertSongAsync(song) {
   };
 
   // Existing DB song (has a real DB id) → UPDATE
-  const isDbId = song.id && typeof song.id === 'number' && song.id < 1e12;
+  const numId = song.id ? Number(song.id) : null;
+  const isDbId = numId && !isNaN(numId) && numId < 1e13;
   if (isDbId) {
-    const { data, error } = await sb.from('songs').update(row).eq('id', song.id).select().single();
+    const { data, error } = await sb.from('songs').update(row).eq('id', numId).select().single();
     if (error) { console.error('Supabase update song:', error); showToast('Gabim: ' + error.message, 'error'); return null; }
     return { ...song, id: data.id };
   }
@@ -1660,6 +1682,7 @@ function renderSong(){
       <div class="tag-row">
         <span class="tag tag-blue">🎵 ${s.key}</span>
         <span class="tag tag-gold">🎸 ${s.instruments.join(' / ')}</span>
+        ${s.capo > 0 ? `<span class="tag tag-gold">🎸 Capo ${s.capo}</span>` : ''}
         <span class="tag tag-red">${s.bilingual !== false ? 'Dygjuhëshe' : 'Njëgjuhëshe'}</span>
       </div>
     </div>
@@ -2725,6 +2748,7 @@ async function saveSong() {
     instruments: insts,
     popular: document.getElementById('fPopular').value === 'true',
     bilingual: document.getElementById('fBilingual').value !== 'false',
+    capo: document.getElementById('fGuitar').checked ? parseInt(document.getElementById('fCapo').value) || 0 : 0,
     recent: !editId,
     youtube: document.getElementById('fYoutube').value.trim() || null,
     thumb: thumb,
@@ -2814,6 +2838,8 @@ function resetSongForm() {
   document.getElementById('fKey').value = 'Am';
   document.getElementById('fPopular').value = 'false';
   document.getElementById('fBilingual').value = 'true';
+  document.getElementById('fCapo').value = '0';
+  toggleCapoField();
   document.getElementById('lyricsPreviewBox').style.display = 'none';
   // Reset form state
   formState = { guitarPdfData: null, pianoPdfData: null, thumbData: null, thumbCleared: false };
@@ -2848,6 +2874,8 @@ function editSong(id) {
   document.getElementById('fYoutube').value = s.youtube || '';
   document.getElementById('fPopular').value = s.popular ? 'true' : 'false';
   document.getElementById('fBilingual').value = s.bilingual === false ? 'false' : 'true';
+  document.getElementById('fCapo').value = s.capo || 0;
+  toggleCapoField();
   document.getElementById('fLyricsGuitar').value = s.lyricsRaw?.Guitar || '';
   document.getElementById('fLyricsPiano').value = s.lyricsRaw?.Piano || '';
   document.getElementById('lyricsPreviewBox').style.display = 'none';
