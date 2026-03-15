@@ -1,6 +1,6 @@
 Read Me :
 
-The Website Was Created Using Pure HTML Code and Hosted at GitHub Page.For Performant and faster Response . 
+The Website Was Created Using Pure HTML Code and Hosted at GitHub Page.(Uses Cloudfare Workers)For Performant and faster Response . 
 It was Connected To a Claude API for Faster Reads of the PDF files uploaded and live transcripted directly on the Website.
 SupaBase is the Main Data base service beeing used where all of the Archive ( SQL ) is Stored and Loaded , as well where most of the Secutity and Connections are handled.
 This Project is Purely made to help the Community and is beeing made public for everyone to access if they want to personally use it or modify it and Contribute as well.
