@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Adhurojmë Së Bashku</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
@@ -641,10 +642,10 @@ footer{background:#07090F;color:rgba(255,255,255,0.55);padding:44px 24px 26px}
         <div class="g-block-title" data-sq="📬 Na Kontaktoni" data-en="📬 Get In Touch">📬 Na Kontaktoni</div>
         <p style="margin-bottom:14px;font-size:13px;color:var(--text2)" data-sq="Ky projekt është i hapur për sugjerime, korrigjime akordesh ose kontribute me këngë të reja." data-en="This project is open to suggestions, chord corrections, or contributions with new songs.">Ky projekt është i hapur për sugjerime, korrigjime akordesh ose kontribute me këngë të reja.</p>
         <div style="display:flex;flex-direction:column;gap:9px">
-          <input type="text" class="form-input" data-placeholder-sq="Emri juaj" data-placeholder-en="Your name" placeholder="Emri juaj"/>
-          <input type="email" class="form-input" data-placeholder-sq="Email-i juaj" data-placeholder-en="Your email" placeholder="Email-i juaj"/>
-          <textarea class="form-textarea" data-placeholder-sq="Mesazhi juaj..." data-placeholder-en="Your message..." placeholder="Mesazhi juaj..."></textarea>
-          <button class="btn btn-primary" style="align-self:flex-start" onclick="showToast(currentLang==='sq'?'Faleminderit! Mesazhi u dërgua.':' Thank you! Message sent.','success')">
+          <input type="text" class="form-input" id="contactName" data-placeholder-sq="Emri juaj" data-placeholder-en="Your name" placeholder="Emri juaj"/>
+          <input type="email" class="form-input" id="contactEmail" data-placeholder-sq="Email-i juaj" data-placeholder-en="Your email" placeholder="Email-i juaj"/>
+          <textarea class="form-textarea" id="contactMessage" data-placeholder-sq="Mesazhi juaj..." data-placeholder-en="Your message..." placeholder="Mesazhi juaj..."></textarea>
+          <button class="btn btn-primary" id="contactSendBtn" style="align-self:flex-start" onclick="sendContactEmail()">
             <span data-sq="Dërgo →" data-en="Send →">Dërgo →</span>
           </button>
         </div>
@@ -2233,6 +2234,41 @@ function loadSocialAdminForm(){
   document.getElementById('sLocation').value=s.location||'';
   document.getElementById('sLocationText').value=s.locationText||'';
   document.getElementById('sEmail').value=s.email||'';
+}
+
+// ── EMAILJS CONTACT FORM ──
+emailjs.init('_nY20miCLwZSC-jow');
+
+async function sendContactEmail() {
+  const name    = document.getElementById('contactName').value.trim();
+  const email   = document.getElementById('contactEmail').value.trim();
+  const message = document.getElementById('contactMessage').value.trim();
+  const btn     = document.getElementById('contactSendBtn');
+
+  if (!name)    { showToast('Shkruaj emrin tënd!', 'error'); return; }
+  if (!email)   { showToast('Shkruaj email-in tënd!', 'error'); return; }
+  if (!message) { showToast('Shkruaj mesazhin!', 'error'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Duke dërguar…';
+
+  try {
+    await emailjs.send('service_yr0bbyf', 'template_0sm4ndf', {
+      from_name:  name,
+      from_email: email,
+      message:    message,
+    });
+    showToast(currentLang === 'sq' ? '✅ Faleminderit! Mesazhi u dërgua.' : '✅ Thank you! Message sent.', 'success');
+    document.getElementById('contactName').value    = '';
+    document.getElementById('contactEmail').value   = '';
+    document.getElementById('contactMessage').value = '';
+  } catch(err) {
+    console.error('EmailJS error:', err);
+    showToast('❌ Gabim gjatë dërgimit. Provo sërish!', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<span>${currentLang === 'sq' ? 'Dërgo →' : 'Send →'}</span>`;
+  }
 }
 
 function renderSocialLinks(){
