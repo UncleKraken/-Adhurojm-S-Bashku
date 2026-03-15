@@ -2357,17 +2357,21 @@ async function handleInstrPDF(event, instrument) {
   }
 
   const textarea = document.getElementById(instrument === 'Guitar' ? 'fLyricsGuitar' : 'fLyricsPiano');
-  const cleaned  = cleanPDFText(fullText);
 
-  if (cleaned.trim()) {
-    // ✅ Text-based PDF — use extracted text directly
-    textarea.value = cleaned;
+  // Try cleaned version first, fall back to raw if empty
+  const cleaned = cleanPDFText(fullText);
+  const finalText = cleaned.trim() ? cleaned : fullText.trim();
+
+  if (finalText) {
+    // ✅ Text-based PDF — populate textarea
+    textarea.value = finalText;
     textarea.dispatchEvent(new Event('input'));
+    textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
     showToast('✅ PDF u lexua! Teksti u vendos automatikisht.', 'success');
     return;
   }
 
-  // Step 5: Image-based PDF — try Claude Vision AI
+  // Step 5: No text found — image-based PDF, try Claude Vision AI
   const apiKey = localStorage.getItem('aa-anthropic-key') || '';
   if (!apiKey) {
     showToast('⚠️ PDF u ruajt! Ky PDF është imazh (skan). Shto një Anthropic API Key te tab-i Social → AI, për lexim automatik.', '');
@@ -2378,7 +2382,6 @@ async function handleInstrPDF(event, instrument) {
   try {
     const aiText = await extractWithClaudeVision(pdfDoc, apiKey);
     if (aiText && aiText.trim()) {
-      // Re-query fresh in case of any DOM timing issue
       const ta = document.getElementById(instrument === 'Guitar' ? 'fLyricsGuitar' : 'fLyricsPiano');
       if (ta) {
         ta.value = aiText.trim();
