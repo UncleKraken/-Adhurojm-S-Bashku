@@ -1011,6 +1011,23 @@ const CHROMATIC = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const FLAT_MAP  = {Db:'C#',Eb:'D#',Fb:'E',Gb:'F#',Ab:'G#',Bb:'A#',Cb:'B'};
 const SHARP_DISPLAY = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
 
+// ── YouTube URL → embed format ──
+function toEmbedUrl(url) {
+  if (!url) return '';
+  // Already an embed URL
+  if (url.includes('youtube.com/embed/') || url.includes('youtube-nocookie.com/embed/')) return url;
+  // youtu.be/ID
+  const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+  if (shortMatch) return `https://www.youtube-nocookie.com/embed/${shortMatch[1]}`;
+  // youtube.com/watch?v=ID
+  const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+  if (watchMatch) return `https://www.youtube-nocookie.com/embed/${watchMatch[1]}`;
+  // youtube.com/shorts/ID
+  const shortsMatch = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
+  if (shortsMatch) return `https://www.youtube-nocookie.com/embed/${shortsMatch[1]}`;
+  return url;
+}
+
 function noteToIdx(n){const r=FLAT_MAP[n]||n;return CHROMATIC.indexOf(r)}
 
 function transposeChord(chord, steps){
@@ -1579,7 +1596,7 @@ function renderSong(){
   }).join('')||'<p style="color:var(--text3);padding:8px 0">Tekstet nuk janë ngarkuar ende. Admini mund t\'i shtojë nëpërmjet panelit të administrimit.</p>';
 
   const videoHtml=s.youtube
-    ?`<iframe src="${s.youtube}" allowfullscreen></iframe>`
+    ?`<iframe src="${toEmbedUrl(s.youtube)}" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>`
     :`<div class="video-placeholder"><div style="font-size:44px;margin-bottom:8px">🎵</div><p>Kjo këngë aktualisht nuk ka video zyrtare.</p></div>`;
 
   const instBtns=s.instruments.map(i=>`<button class="inst-btn ${i===currentInst?'active':''}" onclick="selectInst('${i}')">${i==='Guitar'?'🎸 Kitarë':'🎹 Piano'}</button>`).join('');
@@ -1789,46 +1806,7 @@ async function deleteSong(id){
   showToast('✅ Kënga u fshi.','success');
 }
 
-function saveSong(){
-  const title=document.getElementById('fTitle').value.trim();
-  const artist=document.getElementById('fArtist').value.trim();
-  if(!title||!artist){showToast('Titulli dhe artisti janë të detyrueshëm!','error');return;}
-  const editId=document.getElementById('editSongId').value;
-  const insts=[];
-  if(document.getElementById('fGuitar').checked)insts.push('Guitar');
-  if(document.getElementById('fPiano').checked)insts.push('Piano');
-  const song={
-    id:editId?parseInt(editId):Date.now(),
-    title,original:document.getElementById('fOriginal').value.trim(),
-    artist,key:document.getElementById('fKey').value,
-    instruments:insts,
-    popular:document.getElementById('fPopular').value==='true',
-    recent:!editId,
-    youtube:document.getElementById('fYoutube').value.trim()||null,
-    thumb:document.getElementById('fThumb').value.trim()||null,
-    thumbGrad:['#1a2a4a','#2c4074','#5a80c0'],
-    lyricsRaw:{
-      Guitar:document.getElementById('fLyricsGuitar').value,
-      Piano:document.getElementById('fLyricsPiano').value
-    }
-  };
-  if(!song.thumb&&song.thumbGrad)song.thumb=makeThumbnail(song.thumbGrad,song.title);
-  if(editId){const idx=SONGS.findIndex(s=>s.id===parseInt(editId));if(idx>=0)SONGS[idx]=song;}
-  else{SONGS.push(song);}
-  saveData(SONGS);resetSongForm();refreshAdminSongs();refreshSiteData();
-  showToast(editId?'Kënga u përditësua!':'Kënga u shtua!','success');
-  switchAdminTab('songs',null);
-}
-
-function resetSongForm(){
-  document.getElementById('formTitle').textContent='Shto Këngë të Re';
-  document.getElementById('editSongId').value='';
-  ['fTitle','fOriginal','fArtist','fYoutube','fThumb','fLyricsGuitar','fLyricsPiano'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('fGuitar').checked=true;
-  document.getElementById('fPiano').checked=false;
-  document.getElementById('fKey').value='C';
-  document.getElementById('fPopular').value='false';
-}
+// saveSong and resetSongForm defined below (async versions)
 
 // ═══════════════════════════════════════════════════════
 //  ADMIN — PDF MANAGEMENT
@@ -2392,8 +2370,13 @@ async function handleInstrPDF(event, instrument) {
   try {
     const aiText = await extractWithClaudeVision(pdfDoc, apiKey);
     if (aiText && aiText.trim()) {
-      textarea.value = aiText.trim();
-      textarea.dispatchEvent(new Event('input'));
+      // Re-query fresh in case of any DOM timing issue
+      const ta = document.getElementById(instrument === 'Guitar' ? 'fLyricsGuitar' : 'fLyricsPiano');
+      if (ta) {
+        ta.value = aiText.trim();
+        ta.dispatchEvent(new Event('input'));
+        ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       showToast('✅ AI lexoi akordet me sukses!', 'success');
     } else {
       showToast('⚠️ PDF u ruajt. AI nuk mundi të lexojë akordet. Shkruaje manualisht.', '');
