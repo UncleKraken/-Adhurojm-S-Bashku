@@ -889,7 +889,10 @@ footer{background:#07090F;color:rgba(255,255,255,0.55);padding:44px 24px 26px}
             <div style="position:relative">
               <textarea class="form-textarea" id="fLyricsGuitar" style="min-height:180px;font-family:'Courier New',monospace;font-size:12.5px;line-height:1.7"
                 placeholder="[V1]&#10;Em  C  G  D&#10;Kush është si Ti?&#10;(Who is like He?)&#10;&#10;[CH]&#10;G  D  Em  C&#10;T'lavdëroj Adonai&#10;(I praise you Adonai)"></textarea>
-              <button onclick="previewLyrics('Guitar')" style="position:absolute;right:8px;top:8px;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'Poppins',sans-serif">👁 Preview</button>
+              <div style="position:absolute;right:8px;top:8px;display:flex;gap:4px">
+                <button onclick="rereadWithAI('Guitar')" id="aiReadGuitarBtn" style="display:none;background:var(--gold);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'Poppins',sans-serif">🤖 AI</button>
+                <button onclick="previewLyrics('Guitar')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'Poppins',sans-serif">👁 Preview</button>
+              </div>
             </div>
           </div>
         </div>
@@ -914,7 +917,10 @@ footer{background:#07090F;color:rgba(255,255,255,0.55);padding:44px 24px 26px}
             <div style="position:relative">
               <textarea class="form-textarea" id="fLyricsPiano" style="min-height:140px;font-family:'Courier New',monospace;font-size:12.5px;line-height:1.7"
                 placeholder="[V1]&#10;Em7  Cmaj7  G  Dsus&#10;Kush është si Ti?&#10;(Who is like He?)"></textarea>
-              <button onclick="previewLyrics('Piano')" style="position:absolute;right:8px;top:8px;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'Poppins',sans-serif">👁 Preview</button>
+              <div style="position:absolute;right:8px;top:8px;display:flex;gap:4px">
+                <button onclick="rereadWithAI('Piano')" id="aiReadPianoBtn" style="display:none;background:var(--gold);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'Poppins',sans-serif">🤖 AI</button>
+                <button onclick="previewLyrics('Piano')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'Poppins',sans-serif">👁 Preview</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1552,7 +1558,10 @@ function renderHome(){
   const p=document.getElementById('popularGrid'),r=document.getElementById('recentGrid');
   p.innerHTML='';r.innerHTML='';
   SONGS.filter(s=>s.popular).forEach(s=>p.appendChild(buildCard(s)));
-  SONGS.filter(s=>s.recent).forEach(s=>r.appendChild(buildCard(s)));
+  // Show songs with recent=true, fallback to last 8 songs added
+  const recentSongs = SONGS.filter(s=>s.recent);
+  const toShow = recentSongs.length > 0 ? recentSongs : SONGS.slice(0, 8);
+  toShow.forEach(s=>r.appendChild(buildCard(s)));
 }
 function doHeroSearch(){
   const q=document.getElementById('heroSearch').value.trim();
@@ -2346,6 +2355,9 @@ async function handleInstrPDF(event, instrument) {
   statusEl.textContent = '✓ ' + file.name;
   areaEl.classList.add('has-file');
   clearEl.style.display = 'inline-block';
+  // Show AI re-read button
+  const aiBtn = document.getElementById(instrument === 'Guitar' ? 'aiReadGuitarBtn' : 'aiReadPianoBtn');
+  if (aiBtn) aiBtn.style.display = 'inline-block';
 
   // Step 3: Load PDF with PDF.js
   showToast('📄 Duke lexuar PDF…', '');
@@ -2483,6 +2495,57 @@ Rules:
 }
 
 // ── Anthropic API Key helpers ──
+// ── Re-read existing PDF with AI Vision ──
+async function rereadWithAI(instrument) {
+  const apiKey = localStorage.getItem('aa-anthropic-key') || '';
+  if (!apiKey) {
+    showToast('⚠️ Shto Anthropic API Key te Social → AI!', 'error'); return;
+  }
+  const pdfData = instrument === 'Guitar' ? formState.guitarPdfData : formState.pianoPdfData;
+  if (!pdfData) {
+    showToast('⚠️ Ngarko PDF-in së pari!', 'error'); return;
+  }
+
+  const btn = document.getElementById(instrument === 'Guitar' ? 'aiReadGuitarBtn' : 'aiReadPianoBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  showToast('🤖 AI po lexon PDF-in me Vision…', '');
+
+  try {
+    // Load PDF from dataUrl or fetch from URL
+    let pdfDoc;
+    if (pdfData.startsWith('data:')) {
+      const base64 = pdfData.split(',')[1];
+      const binary = atob(base64);
+      const uint8  = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) uint8[i] = binary.charCodeAt(i);
+      pdfDoc = await pdfjsLib.getDocument({ data: uint8.slice(0) }).promise;
+    } else {
+      // It's a Supabase URL — fetch it
+      const res  = await fetch(pdfData);
+      const buf  = await res.arrayBuffer();
+      pdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+    }
+
+    const aiText = await extractWithClaudeVision(pdfDoc, apiKey);
+    if (aiText && aiText.trim()) {
+      const ta = document.getElementById(instrument === 'Guitar' ? 'fLyricsGuitar' : 'fLyricsPiano');
+      if (ta) {
+        ta.value = aiText.trim();
+        ta.dispatchEvent(new Event('input'));
+        ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      showToast('✅ AI rilexoi akordet me sukses!', 'success');
+    } else {
+      showToast('⚠️ AI nuk mundi të lexojë. Provo sërish.', '');
+    }
+  } catch(err) {
+    console.error('rereadWithAI error:', err);
+    showToast('⚠️ Gabim AI: ' + (err?.message || err), '');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🤖 AI'; }
+  }
+}
+
 function saveAnthropicKey() {
   const key = document.getElementById('anthropicApiKey').value.trim();
   if (!key) { showToast('Fut çelësin së pari!', 'error'); return; }
@@ -2812,6 +2875,8 @@ function editSong(id) {
     document.getElementById('guitarPdfStatus').textContent = '✓ PDF ekzistues';
     document.getElementById('guitarPdfUploadArea').classList.add('has-file');
     document.getElementById('clearGuitarPdf').style.display = 'inline-block';
+    const aiG = document.getElementById('aiReadGuitarBtn');
+    if (aiG) aiG.style.display = 'inline-block';
   } else {
     clearInstrPDF('Guitar');
   }
@@ -2821,6 +2886,8 @@ function editSong(id) {
     document.getElementById('pianoPdfStatus').textContent = '✓ PDF ekzistues';
     document.getElementById('pianoPdfUploadArea').classList.add('has-file');
     document.getElementById('clearPianoPdf').style.display = 'inline-block';
+    const aiP = document.getElementById('aiReadPianoBtn');
+    if (aiP) aiP.style.display = 'inline-block';
   } else {
     clearInstrPDF('Piano');
   }
