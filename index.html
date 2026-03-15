@@ -1924,23 +1924,7 @@ async function refreshAdminSongs(){
   });
 }
 
-function editSong(id){
-  const s=SONGS.find(x=>x.id===id);if(!s)return;
-  switchAdminTab('addSong',document.querySelector('[onclick*="addSong"]'));
-  document.getElementById('formTitle').textContent='Edito Këngën';
-  document.getElementById('editSongId').value=id;
-  document.getElementById('fTitle').value=s.title;
-  document.getElementById('fOriginal').value=s.original||'';
-  document.getElementById('fArtist').value=s.artist;
-  document.getElementById('fKey').value=s.key;
-  document.getElementById('fGuitar').checked=s.instruments.includes('Guitar');
-  document.getElementById('fPiano').checked=s.instruments.includes('Piano');
-  document.getElementById('fYoutube').value=s.youtube||'';
-  document.getElementById('fThumb').value='';
-  document.getElementById('fPopular').value=s.popular?'true':'false';
-  document.getElementById('fLyricsGuitar').value=s.lyricsRaw?.Guitar||'';
-  document.getElementById('fLyricsPiano').value=s.lyricsRaw?.Piano||'';
-}
+// editSong defined below (full version with PDF and bilingual support)
 
 async function deleteSong(id){
   if(!confirm('Jeni i sigurt që doni të fshini këtë këngë?')) return;
