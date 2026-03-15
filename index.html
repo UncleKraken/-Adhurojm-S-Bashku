@@ -1361,9 +1361,11 @@ async function upsertSongAsync(song) {
     lyrics_piano:  song.lyricsRaw?.Piano  || null,
   };
 
-  // Existing DB song (has a real DB id) → UPDATE
+  // Existing DB song → id comes from editIdNum (small sequential DB id)
+  // New songs → id is Date.now() (very large timestamp ~1.7e12)
+  // DB ids from Supabase are sequential small integers (1, 2, 3...)
   const numId = song.id ? Number(song.id) : null;
-  const isDbId = numId && !isNaN(numId) && numId < 1e13;
+  const isDbId = numId && !isNaN(numId) && numId < 1e9; // DB ids are small (< 1 billion)
   if (isDbId) {
     const { data, error } = await sb.from('songs').update(row).eq('id', numId).select().single();
     if (error) { console.error('Supabase update song:', error); showToast('Gabim: ' + error.message, 'error'); return null; }
@@ -2914,7 +2916,7 @@ async function saveSong() {
   }
 
   const song = {
-    id: editIdNum || Date.now(),
+    id: editIdNum || null, // null = new song, DB will generate id
     title,
     original: document.getElementById('fOriginal').value.trim(),
     artist,
