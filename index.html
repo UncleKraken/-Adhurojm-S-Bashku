@@ -1319,17 +1319,25 @@ async function saveSocialAsync(social) {
 // ── PDF / IMAGE STORAGE ──
 async function uploadFileAsync(bucket, path, dataUrl, contentType) {
   const sb = getSB();
-  if (!sb) return null;  // no storage without Supabase
+  if (!sb) return null;
+  // If already a public URL (not base64), return it as-is
+  if (typeof dataUrl === 'string' && dataUrl.startsWith('http')) return dataUrl;
   // Convert dataUrl → Blob
-  const b64  = dataUrl.split(',')[1];
-  const bin  = atob(b64);
-  const arr  = new Uint8Array(bin.length);
-  for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
-  const blob = new Blob([arr], { type: contentType });
-  const { data, error } = await sb.storage.from(bucket).upload(path, blob, { upsert: true, contentType });
-  if (error) { console.error('Storage upload:', error); return null; }
-  const { data: urlData } = sb.storage.from(bucket).getPublicUrl(path);
-  return urlData?.publicUrl || null;
+  try {
+    const b64  = dataUrl.split(',')[1];
+    if (!b64) return null;
+    const bin  = atob(b64);
+    const arr  = new Uint8Array(bin.length);
+    for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    const blob = new Blob([arr], { type: contentType });
+    const { data, error } = await sb.storage.from(bucket).upload(path, blob, { upsert: true, contentType });
+    if (error) { console.error('Storage upload:', error); return null; }
+    const { data: urlData } = sb.storage.from(bucket).getPublicUrl(path);
+    return urlData?.publicUrl || null;
+  } catch(e) {
+    console.error('uploadFileAsync error:', e);
+    return null;
+  }
 }
 
 async function deleteFileAsync(bucket, path) {
@@ -2680,16 +2688,20 @@ async function saveSong() {
 
     // ── Upload PDFs ──
     if (isOnline()) {
+      const sb = getSB();
       if (formState.guitarPdfData) {
-        const url = await uploadFileAsync('pdfs', `${finalId}_Guitar.pdf`, formState.guitarPdfData, 'application/pdf');
-        // Also save public URL in a pdfs table row
-        const sb = getSB();
-        if (sb && url) await sb.from('song_pdfs').upsert({ song_id: finalId, instrument: 'Guitar', pdf_url: url }, { onConflict: 'song_id,instrument' });
+        // Only upload if it's a new file (base64), not an existing Supabase URL
+        if (formState.guitarPdfData.startsWith('data:')) {
+          const url = await uploadFileAsync('pdfs', `${finalId}_Guitar.pdf`, formState.guitarPdfData, 'application/pdf');
+          if (sb && url) await sb.from('song_pdfs').upsert({ song_id: finalId, instrument: 'Guitar', pdf_url: url }, { onConflict: 'song_id,instrument' });
+        }
+        // If it's already a URL, it's already saved — nothing to do
       }
       if (formState.pianoPdfData) {
-        const url = await uploadFileAsync('pdfs', `${finalId}_Piano.pdf`, formState.pianoPdfData, 'application/pdf');
-        const sb = getSB();
-        if (sb && url) await sb.from('song_pdfs').upsert({ song_id: finalId, instrument: 'Piano', pdf_url: url }, { onConflict: 'song_id,instrument' });
+        if (formState.pianoPdfData.startsWith('data:')) {
+          const url = await uploadFileAsync('pdfs', `${finalId}_Piano.pdf`, formState.pianoPdfData, 'application/pdf');
+          if (sb && url) await sb.from('song_pdfs').upsert({ song_id: finalId, instrument: 'Piano', pdf_url: url }, { onConflict: 'song_id,instrument' });
+        }
       }
     } else {
       // localStorage PDF fallback
