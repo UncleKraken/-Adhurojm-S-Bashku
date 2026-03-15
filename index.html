@@ -823,6 +823,13 @@ footer{background:#07090F;color:rgba(255,255,255,0.55);padding:44px 24px 26px}
             <label class="form-label">Shfaq si "Popular"?</label>
             <select class="form-select" id="fPopular"><option value="false">Jo</option><option value="true">Po – Shfaq në Home</option></select>
           </div>
+          <div class="form-group">
+            <label class="form-label">🌐 Gjuha e Tekstit</label>
+            <select class="form-select" id="fBilingual">
+              <option value="true">Dygjuhëshe (Shqip + Anglisht)</option>
+              <option value="false">Njëgjuhëshe (Vetëm Shqip)</option>
+            </select>
+          </div>
           <div class="form-group full">
             <label class="form-label">YouTube Embed URL (opsionale)</label>
             <input class="form-input" id="fYoutube" placeholder="https://www.youtube.com/embed/XXXXXXXX"/>
@@ -1221,6 +1228,7 @@ async function loadSongsAsync() {
     instruments: row.instruments || ['Guitar'],
     popular: !!row.popular,
     recent: !!row.recent,
+    bilingual: row.bilingual !== false,
     youtube: row.youtube || null,
     thumb: row.thumb_url || null,
     thumbGrad: ['#1a2a4a','#2c4074','#5a80c0'],
@@ -1240,6 +1248,7 @@ async function upsertSongAsync(song) {
     instruments: song.instruments,
     popular: !!song.popular,
     recent: !!song.recent,
+    bilingual: song.bilingual !== false,
     youtube: song.youtube || null,
     thumb_url: song.thumb || null,
     lyrics_guitar: song.lyricsRaw?.Guitar || null,
@@ -1607,7 +1616,7 @@ function renderSong(){
       return `<div class="lyric-line">
         <div class="chord-row" style="white-space:pre;font-family:monospace">${transposedChords}</div>
         <div class="lyric-sq">${l.sq}</div>
-        ${l.en?`<div class="lyric-en">${l.en}</div>`:''}
+        ${(l.en && s.bilingual !== false)?`<div class="lyric-en">${l.en}</div>`:''}
       </div>`;
     }).join('');
     return `<div class="lyric-block"><span class="sec-lbl" style="background:${color}">${sec.label}</span><div style="margin-top:7px">${lines}</div></div>`;
@@ -1642,7 +1651,7 @@ function renderSong(){
       <div class="tag-row">
         <span class="tag tag-blue">🎵 ${s.key}</span>
         <span class="tag tag-gold">🎸 ${s.instruments.join(' / ')}</span>
-        <span class="tag tag-red">Dygjuhëshe</span>
+        <span class="tag tag-red">${s.bilingual !== false ? 'Dygjuhëshe' : 'Njëgjuhëshe'}</span>
       </div>
     </div>
     <div class="video-box">${videoHtml}</div>
@@ -2654,6 +2663,7 @@ async function saveSong() {
     key: document.getElementById('fKey').value,
     instruments: insts,
     popular: document.getElementById('fPopular').value === 'true',
+    bilingual: document.getElementById('fBilingual').value !== 'false',
     recent: !editId,
     youtube: document.getElementById('fYoutube').value.trim() || null,
     thumb: thumb,
@@ -2742,6 +2752,7 @@ function resetSongForm() {
   document.getElementById('fPiano').checked = false;
   document.getElementById('fKey').value = 'Am';
   document.getElementById('fPopular').value = 'false';
+  document.getElementById('fBilingual').value = 'true';
   document.getElementById('lyricsPreviewBox').style.display = 'none';
   // Reset form state
   formState = { guitarPdfData: null, pianoPdfData: null, thumbData: null, thumbCleared: false };
@@ -2775,6 +2786,7 @@ function editSong(id) {
   document.getElementById('fPiano').checked = s.instruments.includes('Piano');
   document.getElementById('fYoutube').value = s.youtube || '';
   document.getElementById('fPopular').value = s.popular ? 'true' : 'false';
+  document.getElementById('fBilingual').value = s.bilingual === false ? 'false' : 'true';
   document.getElementById('fLyricsGuitar').value = s.lyricsRaw?.Guitar || '';
   document.getElementById('fLyricsPiano').value = s.lyricsRaw?.Piano || '';
   document.getElementById('lyricsPreviewBox').style.display = 'none';
