@@ -1174,7 +1174,7 @@ function parseLyricsText(raw){
   const lines = raw.split('\n');
   const sections = [];
   let cur = null;
-  const SEC_RE = /^\[?(V\d*|CH\d*|BR\d*|PR\d*|INST\d*|Strofa\s*\d*|Refreni\s*(?:Fund)?\s*\d*|Ura\s*\d*|ParaRefreni\s*\d*)\]?:?\s*(.*)$/i;
+  const SEC_RE = /^\[?(V\d+|CH\d*|BR\d*|PR\d*|INST\d*|Strofa\s*\d+|Refreni\s*(?:Fund)?\s*\d*|Ura\s*\d*|ParaRefreni\s*\d*)\]?\s*:?\s*$/i;
   const SEC_COLORS = {
     'V1':'#1a3a6a','V2':'#1a3a6a','V3':'#1a3a6a','V4':'#1a3a6a',  // Blue — Verse
     'CH':'#8B1A1A','CH2':'#8B1A1A','CH3':'#8B1A1A',                // Red — Chorus
@@ -1189,20 +1189,12 @@ function parseLyricsText(raw){
     const sm = line.match(SEC_RE);
     if(sm){
       const rawLabel = sm[1].trim().replace(/\s+/g,'');
-      // Normalize Albanian labels to standard codes
       const normalized = LABEL_MAP[rawLabel] || LABEL_MAP[rawLabel.charAt(0).toUpperCase()+rawLabel.slice(1).toLowerCase()] || rawLabel.toUpperCase().replace(/\s/g,'');
       const label = normalized;
-      // Get color — check exact match first, then base label (e.g. CH for CH2)
       const baseLabel = label.replace(/\d+$/, '');
       const color = SEC_COLORS[label] || SEC_COLORS[baseLabel] || 'var(--blue)';
       cur = {label, color, lines:[]};
       sections.push(cur);
-      // If there's content after the label on same line
-      const rest = sm[2].trim();
-      if(rest && !isChordLine(rest)){
-        if(!cur.lines.length) cur.pendingChord = '';
-        cur.lines.push({chords:'', sq:rest, en:''});
-      }
       continue;
     }
     if(!cur){ cur={label:'V1',color:'var(--blue)',lines:[]}; sections.push(cur); }
