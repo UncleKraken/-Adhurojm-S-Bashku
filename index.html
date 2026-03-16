@@ -1918,8 +1918,8 @@ async function refreshAdminSongs(){
       </td>
       <td>
         <div class="td-actions">
-          <button class="btn btn-outline btn-sm" onclick="window.editSong(${s.id})" style="font-size:12px">✏️ Edito</button>
-          <button class="btn btn-danger btn-sm" onclick="window.deleteSong(${s.id})" style="font-size:12px">🗑</button>
+          <button class="btn btn-outline btn-sm" onclick="editSong(${s.id})" style="font-size:12px">✏️ Edito</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSong(${s.id})" style="font-size:12px">🗑</button>
         </div>
       </td>`;
     tbody.appendChild(tr);
@@ -1927,7 +1927,6 @@ async function refreshAdminSongs(){
 }
 
 // editSong defined below (full version with PDF and bilingual support)
-window.editSong = function(id) { editSong(id); };
 
 async function deleteSong(id){
   if(!confirm('Jeni i sigurt që doni të fshini këtë këngë?')) return;
