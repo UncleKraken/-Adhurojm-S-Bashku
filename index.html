@@ -1766,9 +1766,9 @@ function renderSong(){
       <div class="song-horig">${s.original||''} ${s.artist?'– '+s.artist:''}</div>
       <div class="tag-row">
         <span class="tag tag-blue">🎵 ${s.key}</span>
-        <span class="tag tag-gold">🎸 ${s.instruments.join(' / ')}</span>
+        ${s.instruments.map(i => `<span class="tag tag-gold">${i==='Guitar'?'🎸':'🎹'} ${i==='Guitar'?'Guitar':'Piano'}</span>`).join('')}
         ${s.capo > 0 ? `<span class="tag tag-gold">🎸 Capo ${s.capo}</span>` : ''}
-        <span class="tag tag-red">${s.bilingual !== false ? 'Dygjuhëshe' : 'Njëgjuhëshe'}</span>
+        <span class="tag tag-red" id="bilingualTag">${s.bilingual !== false ? t('bilingual-tag') : t('monolingual-tag')}</span>
       </div>
     </div>
     <div class="video-box">${videoHtml}</div>
@@ -2222,6 +2222,7 @@ const TRANSLATIONS = {
     'no-video':'Kjo këngë aktualisht nuk ka video zyrtare.',
     'no-lyrics':'Tekstet nuk janë ngarkuar ende.',
     'view-song':'Shiko Këngën →',
+    'bilingual-tag':'Dygjuhëshe','monolingual-tag':'Njëgjuhëshe',
     // ABOUT
     'about-title':'Rreth Nesh','about-sub':'Misioni dhe projekti ynë',
     // CONTACT SOCIAL
@@ -2251,6 +2252,7 @@ const TRANSLATIONS = {
     'no-video':'This song currently has no official video.',
     'no-lyrics':'Lyrics not uploaded yet.',
     'view-song':'View Song →',
+    'bilingual-tag':'Bilingual','monolingual-tag':'Monolingual',
     'about-title':'About Us','about-sub':'Our mission and project',
     'find-us':'📲 Find Us Here','get-touch':'📬 Get In Touch',
     'contact-desc':'This project is open to suggestions, chord corrections, or contributions with new songs.',
@@ -2271,6 +2273,10 @@ function setLang(lang){
   document.getElementById('langSQ').classList.toggle('active', lang==='sq');
   document.getElementById('langEN').classList.toggle('active', lang==='en');
   applyLang();
+  // Re-render song page if open so translations update
+  if(currentSong && document.getElementById('page-song').classList.contains('active')){
+    renderSong();
+  }
 }
 
 function applyLang(){
